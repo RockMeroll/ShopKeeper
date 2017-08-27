@@ -1,0 +1,140 @@
+var type = ['', 'info', 'success', 'warning', 'danger'];
+
+chartinit();
+
+function createXMLRequest() {
+    if (window.XMLHttpRequest) {
+        xmlhttp = new XMLHttpRequest();
+    } else {
+        xmlhttp = new ActiveXObject("Microsoft.XMLHttp");
+    }
+}
+
+function getChartDate(year, month, day) {
+    var url = window.location.host;
+    // xmlhttp.onreadystatechange = function () {
+    //     if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+    //         document.getElementById("chartFlow").innerHTML = xmlhttp.responseText;
+    //     }
+    // }
+    var getUrl = "/get_result/";
+    createXMLRequest();
+    xmlhttp.open("POST", getUrl, false);
+    xmlhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    xmlhttp.send("year=2017&month=4&day=1");
+    return xmlhttp.responseText
+}
+
+function updateLine(result, labels, id) {
+    var data = {
+            labels: labels,
+            series: result
+        },
+        options = {
+            lineSmooth: false,
+            low: 0,
+            high: Math.max.apply(null, result),
+            showArea: true,
+            height: "245px",
+            axisX: {
+                showGrid: false
+            },
+            lineSmooth: Chartist.Interpolation.simple({
+                divisor: 3
+            }),
+            //scaleSteps : null,
+            //scaleStepWidth : null,
+            showLine: false,
+            showPoint: false
+        },
+        responsive = [
+            ['screen and (max-width: 640px)', {
+                axisX: {
+                    labelInterpolationFnc: function (value) {
+                        return value[0];
+                    }
+                }
+            }]
+        ];
+
+    Chartist.Line("#" + id, data, options, responsive);
+}
+
+
+function updatePie(result, id) {
+    var sum = result[0];
+    result.splice(0, 1);
+    var label = [];
+    for (var i in result) {
+        var rate = result[i] / sum;
+        label.push(rate.toFixed(2) * 100 + "%");
+    }
+    var data = {
+        labels: label,
+        series: result
+    };
+
+    var options = {
+        total: sum,
+        showLabel: true
+    };
+    Chartist.Pie("#" + id, data, options);
+}
+
+function parseData(json_str) {
+    var json_data = JSON.parse(json_str);
+    var splited_data = [];
+    splited_data["flow"] = [];
+    splited_data["inner"] = [];
+    splited_data["new"] = [];
+    splited_data["old"] = [];
+    labels = [];
+
+    for (var key in json_data) {
+        if (key != "sum") {
+            labels.push(parseInt(key));
+            splited_data["flow"].push(parseInt(json_data[key][1]));
+            splited_data["inner"].push(parseInt(json_data[key][2]));
+            splited_data["new"].push(parseInt(json_data[key][5]));
+            splited_data["old"].push(parseInt(json_data[key][6]));
+        }
+    }
+
+    var result = [];
+    result["splited_data"] = splited_data;
+    result["flow"] = json_data["sum"][1];
+    result["inner"] = json_data["sum"][2];
+    result["outer"] = json_data["sum"][3];
+    result["deepin"] = json_data["sum"][4];
+    return result;
+}
+
+function chartinit() {
+    // var date = new Date();
+    // var year = date.getFullYear();
+    // var month= date.getMonth();
+    // var day  = date.getDate();
+    var year = 2017;
+    var month = 4;
+    var day = 20;
+    var url = window.location.host;
+    createXMLRequest();
+    xmlhttp.onreadystatechange = function () {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            var result = parseData(xmlhttp.responseText);
+
+            updateLine([result["splited_data"]["flow"]], labels, "chartFlow");
+            updateLine([result["splited_data"]["inner"]], labels, "chartInner");
+            updateLine([result["splited_data"]["new"]], labels, "chartNew");
+            updateLine([result["splited_data"]["old"]], labels, "chartOld");
+            updatePie([result['flow'], result['inner']], "chartInnerRate");
+            updatePie([result['flow'], result['outer']], "chartOuterRate");
+            updatePie([result['flow'], result['deepin']], "chartDeepInRate");
+
+        }
+    };
+    var getUrl = "/get_result/";
+    xmlhttp.open("POST", getUrl, true);
+    xmlhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+    xmlhttp.send("year=" + year + "&month=" + month + "&day=" + day);
+}

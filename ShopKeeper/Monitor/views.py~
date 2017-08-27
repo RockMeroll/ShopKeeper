@@ -1,0 +1,28 @@
+from django.shortcuts import render
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from Inquiry import Inquiry
+import traceback
+
+def index(request):
+    return render(request, 'index.html')
+
+
+@csrf_exempt
+def get_result_for_day(request):
+    print request.POST.items()
+    if request.method == 'POST':
+        post_dic = request.POST
+        try:
+            if 'day' in post_dic.keys():
+                return HttpResponse(Inquiry.get_results_for_day(int(post_dic['year']),
+                                                                int(post_dic['month']),
+                                                                int(post_dic['day'])).items())
+            else:
+                return HttpResponse(Inquiry.get_results_for_month(int(post_dic['year']),
+                                                                  int(post_dic['month'])).items())
+        except Exception, e:
+            traceback.print_exc()
+            return HttpResponse(repr(e))
+    return HttpResponse("GET")
+
